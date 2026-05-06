@@ -28,6 +28,13 @@ RSpec.describe "Api::V1::Insights", type: :request do
     )
   end
 
+  it "requires a country for salary by title" do
+    get "/api/v1/insights/salary_by_title"
+
+    expect(response).to have_http_status(:bad_request)
+    expect(response.parsed_body["error"]).to eq("country is required")
+  end
+
   it "returns top earners" do
     get "/api/v1/insights/top_earners"
 
