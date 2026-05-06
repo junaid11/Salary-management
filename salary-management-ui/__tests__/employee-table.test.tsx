@@ -39,6 +39,31 @@ describe("EmployeeTable", () => {
     expect(screen.getByText(/\$140,000/)).toBeInTheDocument();
   });
 
+  it("renders filter options from API facets", async () => {
+    (fetchEmployees as jest.Mock).mockResolvedValue({
+      data: [],
+      meta: {
+        current_page: 1,
+        next_page: null,
+        prev_page: null,
+        total_pages: 0,
+        total_count: 0,
+        per_page: 50,
+        facets: {
+          countries: ["Spain"],
+          job_titles: ["Compensation Analyst"],
+          departments: ["People Ops"],
+          employment_types: ["contract"],
+        },
+      },
+    });
+
+    renderWithClient(<EmployeeTable />);
+
+    expect(await screen.findByRole("option", { name: "Spain" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Compensation Analyst" })).toBeInTheDocument();
+  });
+
   it("confirms employee deletion", async () => {
     const user = userEvent.setup();
     (fetchEmployees as jest.Mock).mockResolvedValue({
