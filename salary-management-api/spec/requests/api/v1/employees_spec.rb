@@ -18,6 +18,18 @@ RSpec.describe "Api::V1::Employees", type: :request do
       expect(body["meta"]["total_count"]).to eq(1)
       expect(body["meta"]["per_page"]).to eq(1)
     end
+
+    it "returns filter facets for country, job title, and department" do
+      get "/api/v1/employees"
+
+      expect(response).to have_http_status(:ok)
+
+      facets = response.parsed_body.dig("meta", "facets")
+      expect(facets["countries"]).to contain_exactly("India", "USA")
+      expect(facets["job_titles"]).to contain_exactly("Product Manager", "Software Engineer")
+      expect(facets["departments"]).to contain_exactly("Engineering")
+      expect(facets["employment_types"]).to contain_exactly("full_time")
+    end
   end
 
   describe "GET /api/v1/employees/:id" do
