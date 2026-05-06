@@ -10,6 +10,8 @@ module Api
       end
 
       def salary_by_title
+        return render_error(message: "country is required", status: :bad_request) if params[:country].blank?
+
         render_success(data: SalaryInsightsService.by_title_in_country(params[:country]))
       end
 
