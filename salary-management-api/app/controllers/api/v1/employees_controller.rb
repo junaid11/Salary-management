@@ -13,32 +13,22 @@ module Api
         total_count = employees.count
         paginated = employees.offset((page_number - 1) * per_page).limit(per_page)
 
-        render json: {
-          data: EmployeeSerializer.collection(paginated),
-          meta: pagination_meta(total_count)
-        }
+        render_success(data: EmployeeSerializer.collection(paginated), meta: pagination_meta(total_count))
       end
 
       def show
-        render json: { data: EmployeeSerializer.new(employee).as_json }
+        render_success(data: EmployeeSerializer.new(employee).as_json)
       end
 
       def create
         created_employee = Employee.new(employee_params)
-
-        if created_employee.save
-          render json: { data: EmployeeSerializer.new(created_employee).as_json }, status: :created
-        else
-          render_unprocessable_resource(created_employee)
-        end
+        created_employee.save!
+        render_success(data: EmployeeSerializer.new(created_employee).as_json, status: :created)
       end
 
       def update
-        if employee.update(employee_params)
-          render json: { data: EmployeeSerializer.new(employee).as_json }
-        else
-          render_unprocessable_resource(employee)
-        end
+        employee.update!(employee_params)
+        render_success(data: EmployeeSerializer.new(employee).as_json)
       end
 
       def destroy

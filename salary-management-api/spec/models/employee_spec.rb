@@ -40,6 +40,13 @@ RSpec.describe Employee, type: :model do
       expect(described_class.search("QA")).to include(engineer)
       expect(described_class.search("Canada")).to include(engineer)
     end
+
+    it "treats wildcard characters as literal search input" do
+      matching_employee = create(:employee, full_name: "Ava 100%")
+      create(:employee, full_name: "Ava 100x")
+
+      expect(described_class.search("100%")).to contain_exactly(matching_employee)
+    end
   end
 
   describe ".sorted_by" do

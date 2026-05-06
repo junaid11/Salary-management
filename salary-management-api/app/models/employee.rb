@@ -21,11 +21,13 @@ class Employee < ApplicationRecord
   scope :search, lambda { |term|
     next all if term.blank?
 
+    employee_table = arel_table
     sanitized = "%#{sanitize_sql_like(term.strip)}%"
-    where(
-      "full_name ILIKE :term OR job_title ILIKE :term OR country ILIKE :term",
-      term: sanitized
-    )
+    full_name_matches = employee_table[:full_name].matches(sanitized, nil, false)
+    job_title_matches = employee_table[:job_title].matches(sanitized, nil, false)
+    country_matches = employee_table[:country].matches(sanitized, nil, false)
+
+    where(full_name_matches.or(job_title_matches).or(country_matches))
   }
   scope :sorted_by, lambda { |column, direction|
     selected_column = SORTABLE_COLUMNS.include?(column) ? column : "created_at"

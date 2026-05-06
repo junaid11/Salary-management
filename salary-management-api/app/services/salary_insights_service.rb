@@ -1,7 +1,9 @@
 class SalaryInsightsService
   class << self
     def overview
-      average_tenure_days = Employee.average(Arel.sql("CURRENT_DATE - joined_at"))&.to_f || 0.0
+      joined_dates = Employee.where.not(joined_at: nil).pluck(:joined_at)
+      total_tenure_days = joined_dates.sum { |joined_at| (Date.current - joined_at).to_i }
+      average_tenure_days = joined_dates.any? ? total_tenure_days.to_f / joined_dates.size : 0.0
 
       {
         total_headcount: Employee.count,
@@ -13,34 +15,32 @@ class SalaryInsightsService
     end
 
     def by_country
-      Employee
-        .group(:country)
-        .select(
-          "country, MIN(salary) AS min_salary, MAX(salary) AS max_salary, " \
-          "AVG(salary) AS avg_salary, COUNT(*) AS headcount"
-        )
-        .order("country ASC")
-        .map do |record|
-          {
-            country: record.country,
-            min_salary: record.min_salary.to_f.round(2),
-            max_salary: record.max_salary.to_f.round(2),
-            average_salary: record.avg_salary.to_f.round(2),
-            headcount: record.headcount.to_i
-          }
-        end
+      minimums = Employee.group(:country).minimum(:salary)
+      maximums = Employee.group(:country).maximum(:salary)
+      averages = Employee.group(:country).average(:salary)
+      headcounts = Employee.group(:country).count
+
+      headcounts.keys.sort.map do |country|
+        {
+          country: country,
+          min_salary: minimums.fetch(country).to_f.round(2),
+          max_salary: maximums.fetch(country).to_f.round(2),
+          average_salary: averages.fetch(country).to_f.round(2),
+          headcount: headcounts.fetch(country).to_i
+        }
+      end
     end
 
     def by_title_in_country(country)
-      Employee.filtered_by_country(country)
-              .group(:job_title)
-              .select("job_title, AVG(salary) AS avg_salary, COUNT(*) AS headcount")
-              .order("job_title ASC")
-              .map do |record|
+      scoped_employees = Employee.filtered_by_country(country)
+      averages = scoped_employees.group(:job_title).average(:salary)
+      headcounts = scoped_employees.group(:job_title).count
+
+      headcounts.keys.sort.map do |job_title|
         {
-          job_title: record.job_title,
-          average_salary: record.avg_salary.to_f.round(2),
-          headcount: record.headcount.to_i
+          job_title: job_title,
+          average_salary: averages.fetch(job_title).to_f.round(2),
+          headcount: headcounts.fetch(job_title).to_i
         }
       end
     end
@@ -50,36 +50,41 @@ class SalaryInsightsService
     end
 
     def outliers
-      Employee.joins(<<~SQL.squish)
-        INNER JOIN (
-          SELECT job_title, SUM(salary) AS total_salary, COUNT(*) AS headcount
-          FROM employees
-          GROUP BY job_title
-        ) title_stats ON title_stats.job_title = employees.job_title
-      SQL
-              .where("title_stats.headcount > 1")
-              .where(
-                "employees.salary >= 2 * ((title_stats.total_salary - employees.salary) / NULLIF(title_stats.headcount - 1, 0))"
-              )
-              .order(salary: :desc)
+      headcounts = Employee.group(:job_title).count
+      total_salaries = Employee.group(:job_title).sum(:salary)
+      thresholds = headcounts.each_with_object({}) do |(job_title, headcount), values|
+        next if headcount <= 1
+
+        values[job_title] = (2.0 * total_salaries.fetch(job_title).to_f) / (headcount + 1)
+      end
+
+      return Employee.none if thresholds.empty?
+
+      employees = Employee.arel_table
+      condition = thresholds.reduce(nil) do |node, (job_title, threshold)|
+        title_condition = employees[:job_title].eq(job_title).and(employees[:salary].gteq(threshold))
+        node ? node.or(title_condition) : title_condition
+      end
+
+      Employee.where(condition).order(salary: :desc, created_at: :asc)
     end
 
     def headcount_by_country
       Employee.group(:country)
-              .order("country ASC")
               .count
+              .sort_by { |country, _headcount| country }
               .map { |country, headcount| { country: country, headcount: headcount } }
     end
 
     def department_distribution
-      Employee.group(:department)
-              .select("department, AVG(salary) AS average_salary, COUNT(*) AS headcount")
-              .order("department ASC")
-              .map do |record|
+      averages = Employee.group(:department).average(:salary)
+      headcounts = Employee.group(:department).count
+
+      headcounts.keys.sort.map do |department|
         {
-          department: record.department,
-          average_salary: record.average_salary.to_f.round(2),
-          headcount: record.headcount.to_i
+          department: department,
+          average_salary: averages.fetch(department).to_f.round(2),
+          headcount: headcounts.fetch(department).to_i
         }
       end
     end

@@ -60,6 +60,7 @@ RSpec.describe "Api::V1::Employees", type: :request do
       post "/api/v1/employees", params: { employee: params[:employee].merge(email: "bad-email", salary: 0) }
 
       expect(response).to have_http_status(:unprocessable_entity)
+      expect(response.parsed_body["error"]).to eq("Validation failed")
       expect(response.parsed_body["errors"].keys).to include("email", "salary")
     end
   end
@@ -84,6 +85,22 @@ RSpec.describe "Api::V1::Employees", type: :request do
       end.to change(Employee, :count).by(-1)
 
       expect(response).to have_http_status(:no_content)
+    end
+  end
+
+  describe "error responses" do
+    it "returns a consistent payload for missing records" do
+      get "/api/v1/employees/0"
+
+      expect(response).to have_http_status(:not_found)
+      expect(response.parsed_body).to include("error")
+    end
+
+    it "returns a consistent payload for missing parameters" do
+      post "/api/v1/employees", params: {}
+
+      expect(response).to have_http_status(:bad_request)
+      expect(response.parsed_body).to include("error")
     end
   end
 end
