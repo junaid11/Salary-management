@@ -62,6 +62,8 @@ export function EmployeeTable() {
     queryFn: () => fetchEmployees(params),
     placeholderData: (previousData) => previousData,
   });
+  const facetCountries = data?.meta.facets?.countries ?? [...COUNTRIES];
+  const facetJobTitles = data?.meta.facets?.job_titles ?? [...JOB_TITLES];
 
   const deleteMutation = useMutation({
     mutationFn: deleteEmployee,
@@ -107,7 +109,7 @@ export function EmployeeTable() {
                   setPage(1);
                 });
               }}
-              options={[{ label: "All countries", value: "" }, ...COUNTRIES.map((value) => ({ label: value, value }))]}
+              options={[{ label: "All countries", value: "" }, ...facetCountries.map((value) => ({ label: value, value }))]}
               value={country}
             />
             <Select
@@ -118,7 +120,7 @@ export function EmployeeTable() {
                   setPage(1);
                 });
               }}
-              options={[{ label: "All job titles", value: "" }, ...JOB_TITLES.map((value) => ({ label: value, value }))]}
+              options={[{ label: "All job titles", value: "" }, ...facetJobTitles.map((value) => ({ label: value, value }))]}
               value={jobTitle}
             />
           </div>

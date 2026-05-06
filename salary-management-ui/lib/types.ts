@@ -30,6 +30,12 @@ export type EmployeeListMeta = {
   total_pages: number;
   total_count: number;
   per_page: number;
+  facets?: {
+    countries: string[];
+    job_titles: string[];
+    departments: string[];
+    employment_types: string[];
+  };
 };
 
 export type EmployeeListResponse = {
