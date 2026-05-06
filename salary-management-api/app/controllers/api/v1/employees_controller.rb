@@ -74,7 +74,17 @@ module Api
           prev_page: page_number > 1 ? page_number - 1 : nil,
           total_pages: total_pages,
           total_count: total_count,
-          per_page: per_page
+          per_page: per_page,
+          facets: filter_facets
+        }
+      end
+
+      def filter_facets
+        {
+          countries: Employee.distinct.order(:country).pluck(:country),
+          job_titles: Employee.distinct.order(:job_title).pluck(:job_title),
+          departments: Employee.distinct.order(:department).pluck(:department),
+          employment_types: Employee.distinct.order(:employment_type).pluck(:employment_type)
         }
       end
     end
